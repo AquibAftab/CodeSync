@@ -1,5 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
-import { addHours, intervalToDuration, isAfter, isBefore, isWithinInterval } from "date-fns";
+import { addHours, differenceInSeconds, isAfter, isBefore } from "date-fns";
 import { twMerge } from "tailwind-merge";
 import { Doc } from "../../convex/_generated/dataModel";
 
@@ -60,25 +60,29 @@ export const getInterviewerInfo = (users: User[], interviewerId: string) => {
 export const calculateRecordingDuration = (startTime: string, endTime: string) => {
   const start = new Date(startTime);
   const end = new Date(endTime);
-
-  const duration = intervalToDuration({ start, end });
-
-  if (duration.hours && duration.hours > 0) {
-    return `${duration.hours}:${String(duration.minutes).padStart(2, "0")}:${String(
-      duration.seconds
-    ).padStart(2, "0")}`;
+  
+  // Calculate total seconds
+  const diffInSeconds = differenceInSeconds(end, start);
+  
+  // Calculate hours, minutes, seconds
+  const hours = Math.floor(diffInSeconds / 3600);
+  const minutes = Math.floor((diffInSeconds % 3600) / 60);
+  const seconds = diffInSeconds % 60;
+  
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   }
-
-  if (duration.minutes && duration.minutes > 0) {
-    return `${duration.minutes}:${String(duration.seconds).padStart(2, "0")}`;
+  
+  if (minutes > 0) {
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
   }
-
-  return `${duration.seconds} seconds`;
+  
+  return `${seconds} seconds`;
 };
 
 export const getMeetingStatus = (interview: Interview) => {
   const now = new Date();
-  const interviewStartTime = interview.startTime;
+  const interviewStartTime = new Date(interview.startTime);
   const endTime = addHours(interviewStartTime, 1);
 
   if (
@@ -87,7 +91,9 @@ export const getMeetingStatus = (interview: Interview) => {
     interview.status === "succeeded"
   )
     return "completed";
-  if (isWithinInterval(now, { start: interviewStartTime, end: endTime })) return "live";
+    
+  // Replace isWithinInterval with manual check
+  if (now >= interviewStartTime && now <= endTime) return "live";
   if (isBefore(now, interviewStartTime)) return "upcoming";
   return "completed";
 };
